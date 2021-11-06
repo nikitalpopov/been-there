@@ -1,0 +1,25 @@
+:host {
+  display: block;
+  padding: 16px;
+}
+
+#header {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+
+  & > div {
+    display: flex;
+    gap: 8px;
+    align-items: center ;
+
+    & > * {
+      height: fit-content;
+    }
+  }
+
+  .left > h1 {
+    cursor: pointer;
+    font-weight: bold;
+  }
+}
