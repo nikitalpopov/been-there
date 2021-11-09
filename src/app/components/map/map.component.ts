@@ -1,6 +1,8 @@
 import { AfterViewInit, Component } from '@angular/core';
+import { faMinus, faPlus } from '@fortawesome/free-solid-svg-icons';
 import * as d3 from 'd3';
 import { SubjectPosition } from 'd3';
+import { combineLatest } from 'rxjs';
 import { LocationService } from 'src/app/services/location.service';
 import * as topojson from 'topojson-client';
 
@@ -10,54 +12,79 @@ import * as topojson from 'topojson-client';
   styleUrls: ['./map.component.scss']
 })
 export class MapComponent implements AfterViewInit {
-  private height = 600;
-  private width = 600;
+  faPlus = faPlus;
+  faMinus = faMinus;
+
+  private height = document.body.getBoundingClientRect().height;
+  private width = document.body.getBoundingClientRect().width;
   private radius = 250;
+  private resizeObserver = new ResizeObserver(entries => {
+    for (let entry of entries) {
+      if (entry.contentBoxSize) {
+        // Firefox implements `contentBoxSize` as a single content rect, rather than an array
+        const contentBoxSize = Array.isArray(entry.contentBoxSize) ? entry.contentBoxSize[0] : entry.contentBoxSize;
+
+        this.width = contentBoxSize.inlineSize;
+        this.height = contentBoxSize.blockSize;
+
+        this.svg = d3.select<Element, unknown>("#map")
+          .attr("width", this.width)
+          .attr("height", this.height)
+          .attr("viewbox", `0 0 ${this.width} ${this.height}`);
+
+        this.projection.translate([this.width / 2, this.height / 2]);
+        this.drawProjection();
+        this.svg!.select<SVGCircleElement>("circle")
+          .attr("cx", this.width / 2)
+          .attr("cy", this.height / 2);
+      }
+    }
+  });
 
   private world?: any;
   private countries?: any;
 
-  private svg?: any;
+  private svg?: d3.Selection<Element, unknown, HTMLElement, any>;
   private graticule = d3.geoGraticule10();
   private projection = d3.geoOrthographic()
-      .scale(this.radius)
-      .translate([this.width / 2, this.height / 2])
-      .clipAngle(90)!;
+    .scale(this.radius)
+    .translate([this.width / 2, this.height / 2])
+    .clipAngle(90)!;
   private path = d3.geoPath(this.projection);
   private drag = d3.drag()
-      .on("start", this.onDragStart.bind(this))
-      .on("drag", this.onDrag.bind(this))
-      .on("end", this.onDragEnd.bind(this)) as any;
+    .on("start", this.onDragStart.bind(this))
+    .on("drag", this.onDrag.bind(this))
+    .on("end", this.onDragEnd.bind(this)) as any;
+  private zoom = d3.zoom()
+    .scaleExtent([0.75, 10])
+    .on("zoom", this.onZoom.bind(this));
   private gpos0: [number, number] | null = [0, 0];
   private o0: [number, number, number] = [-28.8394792245004, -35.40978980299912, 0];
 
-  constructor(private service: LocationService) {
-    this.setData = this.setData.bind(this);
-    this.onDragStart = this.onDragStart.bind(this);
-    this.onDrag = this.onDrag.bind(this);
-    this.onDragEnd = this.onDragEnd.bind(this);
-  }
+  constructor(private service: LocationService) {}
 
   ngAfterViewInit(): void {
-    // d3.json("https://pkgstore.datahub.io/core/geo-countries/countries/archive/23f420f929e0e09c39d916b8aaa166fb/countries.geojson")
-    d3.json("./assets/countries.10m.geojson")
-      .then((countries: any) => this.countries = this.service.filterCountries(countries))
-      .then(() =>
-        d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(
-          this.setData,
-          (error) => { if (error) throw error; }
-        )
-      );
+    this.resizeObserver.observe(document.body);
+
+    combineLatest([this.service.countries, this.service.world]).subscribe((data) => {
+      this.countries = data[0];
+      this.world = data[1];
+
+      this.setData();
+    })
   }
 
-  private setData(world: any) {
-    this.world = world;
-
-    this.svg = d3.select("#map")
+  private setData() {
+    this.svg = d3.select<Element, unknown>("#map")
       .attr("width", this.width)
-      .attr("height", this.height);
+      .attr("height", this.height)
+      .attr("viewbox", `0 0 ${this.width} ${this.height}`);
 
-    this.svg.call(this.drag);
+    this.svg!.call(this.drag);
+    this.svg!.call(this.zoom);
+
+    d3.select("#zoomIn").on("click", this.onZoomIn.bind(this));
+    d3.select("#zoomOut").on("click", this.onZoomOut.bind(this));
 
     this.projection.rotate(this.o0);
 
@@ -66,54 +93,55 @@ export class MapComponent implements AfterViewInit {
   }
 
   private drawGlobe(): void {
-    const land = topojson.feature(this.world, this.world.objects.land);
-    const borders = topojson.mesh(this.world, this.world.objects.countries, function (a, b) { return a !== b; });
+    if (this.world && this.countries) {
+      const land = topojson.feature(this.world, this.world.objects.land);
+      const borders = topojson.mesh(this.world, this.world.objects.countries, function (a, b) { return a !== b; });
 
-    this.svg.append("circle")
-      .attr("cx", this.width / 2)
-      .attr("cy", this.height / 2)
-      .attr("r", this.radius)
-      .style("fill", "none")
-      .style("stroke", "black")
-      .style("stroke-width", 2);
+      this.svg!.append("circle")
+        .attr("cx", this.width / 2)
+        .attr("cy", this.height / 2)
+        .attr("r", this.radius)
+        .style("fill", "none")
+        .style("stroke", "black")
+        .style("stroke-width", 2);
 
-    this.svg.append("path")
-      .datum(this.graticule)
-      .attr("class", "graticule")
-      .attr("d", this.path)
-      .style("fill", "none")
-      .style("stroke", "rgba(0, 0, 0, 0.17)");
+      this.svg!.append("path")
+        .datum(this.graticule)
+        .attr("class", "graticule")
+        .attr("d", this.path)
+        .style("fill", "none")
+        .style("stroke", "rgba(0, 0, 0, 0.17)");
 
-    this.svg.append("path")
-      .datum(land)
-      .attr("class", "land")
-      .attr("d", this.path)
-      .style("fill", "rgba(0, 0, 0, 0.17)")
-      .style("stroke", "none");
+      this.svg!.append("path")
+        .datum(land)
+        .attr("class", "land")
+        .attr("d", this.path)
+        .style("fill", "rgba(0, 0, 0, 0.17)")
+        .style("stroke", "none");
 
-    this.svg.append("g")
-      .selectAll("path")
-      .data(this.countries.features)
-      .join("path")
-      .attr("class", "land")
-      .attr("d", this.path.projection(this.projection))
-      .attr("title", (feature: any) => (feature.ADMIN))
-      .style("stroke", "none")
-      .style("fill", "rgb(108, 229, 178, 0.74)");
-      // .on("mouseover", this.onMouseOver)
-      // .on("mouseleave", this.onMouseLeave);
+      this.svg!.append("g")
+        .selectAll("path")
+        .data(this.countries.features)
+        .join("path")
+        .attr("class", "country")
+        .attr("d", this.path.projection(this.projection) as unknown as string)
+        .style("stroke", "none")
+        .style("fill", "rgba(108, 229, 178, 0.74)")
+        .on("mouseover", this.onMouseOver.bind(this))
+        .on("mouseleave", this.onMouseLeave.bind(this));
 
-    this.svg.append("path")
-      .datum(borders)
-      .attr("class", "border")
-      .attr("d", this.path)
-      .style("fill", "none")
-      .style("stroke", "rgba(255, 255, 255, 0.7)");
+      this.svg!.append("path")
+        .datum(borders)
+        .attr("class", "border")
+        .attr("d", this.path)
+        .style("fill", "none")
+        .style("stroke", "rgba(255, 255, 255, 0.7)");
+    }
   }
 
   private drawProjection(): void {
-    this.svg.selectAll("path")
-      .attr("d", this.path.projection(this.projection));
+    this.svg!.selectAll("path")
+      .attr("d", this.path.projection(this.projection) as unknown as string);
   }
 
   private onDragStart(event: unknown & SubjectPosition, d: unknown) {
@@ -145,16 +173,32 @@ export class MapComponent implements AfterViewInit {
 
   private onDragEnd(event: unknown & SubjectPosition, d: unknown) {}
 
-  // private onMouseOver(event: MouseEvent) {
-  //   if (event.target) {
-  //     (event.target as HTMLElement).style.fill = "rgba(0, 0, 0, 0.67)";
-  //   }
-  // }
+  private onZoom(event: any) {
+    const zoom = event.transform.translate(this.projection).k;
+    this.projection.scale(zoom * this.radius);
+    this.drawProjection();
+    this.svg!.select<SVGCircleElement>("circle").attr('r', zoom * this.radius);
+  }
 
-  // private onMouseLeave(event: MouseEvent) {
-  //   console.log('onMouseLeave', event);
-  //   if (event.target) {
-  //     (event.target as HTMLElement).style.fill = "rgba(0, 0, 0, 0.17)";
-  //   }
-  // }
+  private onZoomIn(event: unknown) {
+    this.zoom.scaleBy(this.svg!.transition().duration(750), 1.2);
+  }
+
+  private onZoomOut(event: unknown) {
+    this.zoom.scaleBy(this.svg!.transition().duration(750), 0.8);
+  }
+
+  private onMouseOver(event: MouseEvent) {
+    if (event.target) {
+      const target = event.target as SVGPathElement;
+      target.style.fill = "rgba(120, 200, 160, 1)";
+    }
+  }
+
+  private onMouseLeave(event: MouseEvent) {
+    if (event.target) {
+      const target = event.target as SVGPathElement;
+      target.style.fill = "rgba(108, 229, 178, 0.74)";
+    }
+  }
 }

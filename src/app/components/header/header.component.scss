@@ -1,6 +1,8 @@
 :host {
   display: block;
   padding: 16px;
+  position: relative;
+  z-index: 1;
 }
 
 #header {

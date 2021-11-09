@@ -1,9 +1,17 @@
 import { Injectable } from '@angular/core';
+import * as d3 from 'd3';
+import { BehaviorSubject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LocationService {
+  private _countries = new BehaviorSubject(undefined);
+  public countries = this._countries.asObservable();
+
+  private _world = new BehaviorSubject(undefined);
+  public world = this._world.asObservable();
+
   public visitedCountries = [
     'russia',
     'thailand',
@@ -27,13 +35,29 @@ export class LocationService {
   private TO_RADIANS = Math.PI / 180;
   private TO_DEGREES = 180 / Math.PI;
 
-  constructor() { }
+  constructor() {
+    this.loadData();
+  }
 
   public filterCountries(countries: any): any {
     countries.features = countries.features
       .filter((c: any) => (this.visitedCountries.includes(c.properties.ADMIN?.toLowerCase() || c.properties.admin?.toLowerCase())));
 
     return countries;
+  }
+
+  private loadData() {
+    // d3.json("/assets/countries.10m.geojson")
+    d3.json("/assets/countries.110m.geojson")
+      .then(
+        (countries: any) => this._countries.next(this.filterCountries(countries)),
+        (error) => { if (error) throw error; }
+      );
+
+    d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(
+      (world: any) => this._world.next(world),
+      (error) => { if (error) throw error; }
+    )
   }
 
   // Helper function: cross product of two vectors v0&v1
@@ -114,9 +138,11 @@ export class LocationService {
     return [qr, qi, qj, qk];
   }
 
-  // This functions computes a quaternion multiply
-  // Geometrically, it means combining two quant rotations
-  // http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/arithmetic/index.htm
+  /**
+   * This functions computes a quaternion multiply
+   * Geometrically, it means combining two quant rotations
+   * http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/arithmetic/index.htm
+   */
   private quatMultiply(q1?: [number, number, number, number], q2?: 0 | [number, number, number, number]): [number, number, number, number] | undefined {
     if (!q1 || !q2) return;
 
@@ -137,8 +163,10 @@ export class LocationService {
     ];
   }
 
-  // This function computes quaternion to euler angles
-  // https://en.wikipedia.org/wiki/Rotation_formalisms_in_three_dimensions#Euler_angles_.E2.86.94_Quaternion
+  /**
+   * This function computes quaternion to euler angles
+   * https://en.wikipedia.org/wiki/Rotation_formalisms_in_three_dimensions#Euler_angles_.E2.86.94_Quaternion
+   */
   private quat2euler(t?: [number, number, number, number]): [number, number, number] {
     if (!t) throw new Error('Quaternion angles are undefined!');
 
@@ -149,12 +177,13 @@ export class LocationService {
     ]
   }
 
-  // This function computes the euler angles when given two vectors, and a rotation
-  // This is really the only math function called with d3 code.
-
-  // v0 - starting pos in lon/lat, commonly obtained by projection.invert
-  // v1 - ending pos in lon/lat, commonly obtained by projection.invert
-  // o0 - the projection rotation in euler angles at starting pos (v0), commonly obtained by projection.rotate
+  /**
+   * This function computes the euler angles when given two vectors, and a rotation
+   * This is really the only math function called with d3 code.
+   * @param v0 - starting pos in lon/lat, commonly obtained by projection.invert
+   * @param v1 - ending pos in lon/lat, commonly obtained by projection.invert
+   * @param o0 - the projection rotation in euler angles at starting pos (v0), commonly obtained by projection.rotate
+   */
   public eulerAngles(v0: [number, number], v1: [number, number], o0: [number, number, number]): [number, number, number] {
     /*
       The math behind this:
