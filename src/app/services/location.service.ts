@@ -29,7 +29,8 @@ export class LocationService {
     'italy',
     'hungary',
     'portugal',
-    'austria'
+    'austria',
+    'turkey'
   ];
 
   private TO_RADIANS = Math.PI / 180;
