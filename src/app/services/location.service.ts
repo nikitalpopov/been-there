@@ -1,6 +1,7 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import * as d3 from 'd3';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -12,32 +13,20 @@ export class LocationService {
   private _world = new BehaviorSubject(undefined);
   public world = this._world.asObservable();
 
-  public visitedCountries = [
-    'russia',
-    'thailand',
-    'china',
-    'malta',
-    'finland',
-    'sweden',
-    'united states of america',
-    'estonia',
-    'georgia',
-    'denmark',
-    'belarus',
-    'armenia',
-    'germany',
-    'italy',
-    'hungary',
-    'portugal',
-    'austria',
-    'turkey'
-  ];
+  public visitedCountries: Array<string> = [];
 
   private TO_RADIANS = Math.PI / 180;
   private TO_DEGREES = 180 / Math.PI;
 
-  constructor() {
-    this.loadData();
+  constructor(private http: HttpClient) {
+    this.getVisitedCountries().subscribe(visitedCountries => {
+      this.visitedCountries = visitedCountries;
+      this.loadData();
+    })
+  }
+
+  public getVisitedCountries(): Observable<Array<string>> {
+    return this.http.get<Array<string>>('https://personal-api-fnxy6.ondigitalocean.app/been-there/visited/countries');
   }
 
   public filterCountries(countries: any): any {

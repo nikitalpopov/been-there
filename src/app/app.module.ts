@@ -1,3 +1,4 @@
+import { HttpClientModule } from '@angular/common/http';
 import { NgModule } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -24,6 +25,7 @@ import { AnchorDirective } from './directives/anchor.directive';
     BrowserModule,
     BrowserAnimationsModule,
     FontAwesomeModule,
+    HttpClientModule,
     MatButtonModule,
     MatIconModule
   ],
