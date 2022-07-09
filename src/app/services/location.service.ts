@@ -26,7 +26,7 @@ export class LocationService {
   }
 
   public getVisitedCountries(): Observable<Array<string>> {
-    return this.http.get<Array<string>>('https://personal-api-fnxy6.ondigitalocean.app/been-there/visited/countries');
+    return this.http.get<Array<string>>('https://plankton-app-m6cri.ondigitalocean.app/been-there/visited/countries');
   }
 
   public filterCountries(countries: any): any {
