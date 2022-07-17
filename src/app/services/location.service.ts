@@ -2,6 +2,22 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import * as d3 from 'd3';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+
+interface NomadListResponse {
+  success: boolean;
+  trips: Array<{
+    country_code: string;
+    country: string;
+    date_start: string;
+    date_end: string;
+    epoch_start: number;
+    epoch_end: number;
+    latitude: number;
+    longitude: number;
+    place: string;
+  }>;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -26,12 +42,23 @@ export class LocationService {
   }
 
   public getVisitedCountries(): Observable<Array<string>> {
-    return this.http.get<Array<string>>('https://plankton-app-m6cri.ondigitalocean.app/been-there/visited/countries');
+    return this.http.get<NomadListResponse>('https://nomadlist.com/@nikitalpopov.json').pipe(map(response => {
+      let visitedCountries: Array<string> = [];
+      if (response.success) {
+        const epoch = new Date().getTime() / 1000;
+        const countries = response.trips
+          .filter(trip => trip.epoch_start <= epoch)
+          .map(trip => trip.country_code.toUpperCase());
+        visitedCountries = [...new Set(countries)]
+      }
+
+      return visitedCountries;
+    }));
   }
 
   public filterCountries(countries: any): any {
     countries.features = countries.features
-      .filter((c: any) => (this.visitedCountries.includes(c.properties.ADMIN?.toLowerCase() || c.properties.admin?.toLowerCase())));
+      .filter((c: any) => (this.visitedCountries.includes(c.properties.wb_a2?.toUpperCase())));
 
     return countries;
   }
