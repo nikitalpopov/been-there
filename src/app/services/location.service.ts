@@ -48,7 +48,7 @@ export class LocationService {
         const epoch = new Date().getTime() / 1000;
         const countries = response.trips
           .filter(trip => trip.epoch_start <= epoch)
-          .map(trip => trip.country_code.toUpperCase());
+          .map(trip => trip.country_code.toLocaleUpperCase());
         visitedCountries = [...new Set(countries)]
       }
 
@@ -57,21 +57,25 @@ export class LocationService {
   }
 
   public filterCountries(countries: any): any {
+    countries.features = countries.features.map((f: any) => {
+      const { name, iso_3166_1_alpha_2_codes, iso3 } = f.properties
+      f.properties = { country: name, iso2: iso_3166_1_alpha_2_codes, iso3 }
+      return f
+    });
     countries.features = countries.features
-      .filter((c: any) => (this.visitedCountries.includes(c.properties.wb_a2?.toUpperCase())));
+      .filter((c: any) => (this.visitedCountries.includes((c.properties.iso2 as string)?.toLocaleUpperCase())));
 
     return countries;
   }
 
   private loadData() {
-    // d3.json("/assets/countries.10m.geojson")
-    d3.json("/assets/countries.110m.geojson")
+    d3.json("/assets/world-administrative-boundaries.geojson")
       .then(
         (countries: any) => this._countries.next(this.filterCountries(countries)),
         (error) => { if (error) throw error; }
       );
 
-    d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(
+    d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json").then(
       (world: any) => this._world.next(world),
       (error) => { if (error) throw error; }
     )
