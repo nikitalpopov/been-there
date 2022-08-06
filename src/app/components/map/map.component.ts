@@ -3,7 +3,7 @@ import { faMinus, faPlus } from '@fortawesome/free-solid-svg-icons';
 import * as d3 from 'd3';
 import { SubjectPosition } from 'd3';
 import { combineLatest } from 'rxjs';
-import { LocationService } from 'src/app/services/location.service';
+import { LocationService, TripInfo } from 'src/app/services/location.service';
 import * as topojson from 'topojson-client';
 
 @Component({
@@ -43,6 +43,7 @@ export class MapComponent implements AfterViewInit {
 
   private world?: any;
   private countries?: any;
+  private locations: Array<TripInfo> = [];
 
   private svg?: d3.Selection<Element, unknown, HTMLElement, any>;
   private graticule = d3.geoGraticule10();
@@ -61,14 +62,17 @@ export class MapComponent implements AfterViewInit {
   private gpos0: [number, number] | null = [0, 0];
   private o0: [number, number, number] = [-28.8394792245004, -35.40978980299912, 0];
 
+  private locationPlaceholder = document.getElementById('location')
+
   constructor(private service: LocationService) {}
 
   ngAfterViewInit(): void {
     this.resizeObserver.observe(document.body);
 
-    combineLatest([this.service.countries, this.service.world]).subscribe((data) => {
+    combineLatest([this.service.countries, this.service.locations, this.service.world]).subscribe((data) => {
       this.countries = data[0];
-      this.world = data[1];
+      this.locations = data[1];
+      this.world = data[2];
 
       this.setData();
     })
@@ -136,6 +140,37 @@ export class MapComponent implements AfterViewInit {
         .attr("d", this.path)
         .style("fill", "none")
         .style("stroke", "rgba(255, 255, 255, 0.7)");
+
+      const locations = {
+        type: "FeatureCollection",
+        features: [] as unknown[]
+      };
+      locations.features = this.locations.map(l => {
+        const { coordinates, date, place } = l
+        return {
+          type: "Feature",
+          geometry: { type: "Point", coordinates },
+          properties: { date, place }
+        }
+      });
+
+      this.svg!.append("g")
+        .selectAll("path")
+        .data(locations.features)
+        .join("path")
+        .attr("name", (feature: any) => feature.properties.place)
+        .attr("class", "location")
+        .attr("d", this.path.projection(this.projection) as unknown as string)
+        .style("cursor", "pointer")
+        .style("paint-order", "stroke")
+        .style("stroke", "white")
+        .style("fill", "#4abcc6")
+        .on("mouseover", (event: MouseEvent) => {
+          this.locationPlaceholder!.innerText = (event.target as HTMLElement).getAttribute("name") || '';
+        })
+        .on("mouseleave", (event: MouseEvent) => {
+          this.locationPlaceholder!.innerText = '';
+        });
     }
   }
 

@@ -19,6 +19,12 @@ interface NomadListResponse {
   }>;
 }
 
+export interface TripInfo {
+  coordinates: [number, number];
+  date: Date;
+  place: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -26,33 +32,40 @@ export class LocationService {
   private _countries = new BehaviorSubject(undefined);
   public countries = this._countries.asObservable();
 
+  private _locations = new BehaviorSubject<Array<TripInfo>>([]);
+  public locations = this._locations.asObservable();
+
   private _world = new BehaviorSubject(undefined);
   public world = this._world.asObservable();
 
   public visitedCountries: Array<string> = [];
+  public visitedLocations: Array<TripInfo> = [];
 
   private TO_RADIANS = Math.PI / 180;
   private TO_DEGREES = 180 / Math.PI;
 
   constructor(private http: HttpClient) {
-    this.getVisitedCountries().subscribe(visitedCountries => {
-      this.visitedCountries = visitedCountries;
+    this.getVisitedCountries().subscribe(() => {
       this.loadData();
     })
   }
 
-  public getVisitedCountries(): Observable<Array<string>> {
+  public getVisitedCountries(): Observable<void> {
     return this.http.get<NomadListResponse>('https://nomadlist.com/@nikitalpopov.json').pipe(map(response => {
-      let visitedCountries: Array<string> = [];
       if (response.success) {
         const epoch = new Date().getTime() / 1000;
+        this.visitedLocations = response.trips.map(trip => ({
+          coordinates: [trip.longitude, trip.latitude],
+          date: new Date(trip.date_start),
+          place: trip.place
+        }));
         const countries = response.trips
           .filter(trip => trip.epoch_start <= epoch)
           .map(trip => trip.country_code.toLocaleUpperCase());
-        visitedCountries = [...new Set(countries)]
+        this.visitedCountries = [...new Set(countries)];
       }
 
-      return visitedCountries;
+      return;
     }));
   }
 
@@ -79,6 +92,8 @@ export class LocationService {
       (world: any) => this._world.next(world),
       (error) => { if (error) throw error; }
     )
+
+    this._locations.next(this.visitedLocations);
   }
 
   // Helper function: cross product of two vectors v0&v1
