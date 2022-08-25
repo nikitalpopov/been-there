@@ -59,7 +59,6 @@ export class LocationService {
     this.range.controls.start.valueChanges
       .pipe(combineLatestWith(this.range.controls.end.valueChanges))
       .subscribe(([startDate, endDate]) => {
-        console.warn(startDate, endDate)
         if (startDate && endDate) {
           endDate.setHours(23, 59, 59, 999)
           this.sendInfo(startDate, endDate)
@@ -84,10 +83,13 @@ export class LocationService {
     const startDateEpoch = startDate.getTime() / 1000
     const endDateEpoch = endDate.getTime() / 1000
     const dateRangeTrips =
-      nomadListData?.trips.filter((trip) => trip.epoch_start >= startDateEpoch && trip.epoch_start <= endDateEpoch) ??
-      []
+      nomadListData?.trips.filter(
+        (trip) => trip.epoch_start >= startDateEpoch && trip.epoch_start <= endDateEpoch,
+      ) ?? []
 
-    const visitedCountries = [...new Set(dateRangeTrips.map((trip) => trip.country_code.toLocaleUpperCase()))]
+    const visitedCountries = [
+      ...new Set(dateRangeTrips.map((trip) => trip.country_code.toLocaleUpperCase())),
+    ]
 
     if (countries) {
       countries.features = countries.features.filter((c: any) =>
@@ -142,8 +144,15 @@ export class LocationService {
   }
 
   // Helper function: cross product of two vectors v0&v1
-  private cross(v0: [number, number, number], v1: [number, number, number]): [number, number, number] {
-    return [v0[1] * v1[2] - v0[2] * v1[1], v0[2] * v1[0] - v0[0] * v1[2], v0[0] * v1[1] - v0[1] * v1[0]]
+  private cross(
+    v0: [number, number, number],
+    v1: [number, number, number],
+  ): [number, number, number] {
+    return [
+      v0[1] * v1[2] - v0[2] * v1[1],
+      v0[2] * v1[0] - v0[0] * v1[2],
+      v0[0] * v1[1] - v0[1] * v1[0],
+    ]
   }
 
   // Helper function: dot product of two vectors v0&v1
@@ -251,9 +260,11 @@ export class LocationService {
     if (!t) throw new Error('Quaternion angles are undefined!')
 
     return [
-      Math.atan2(2 * (t[0] * t[1] + t[2] * t[3]), 1 - 2 * (t[1] * t[1] + t[2] * t[2])) * this.TO_DEGREES,
+      Math.atan2(2 * (t[0] * t[1] + t[2] * t[3]), 1 - 2 * (t[1] * t[1] + t[2] * t[2])) *
+        this.TO_DEGREES,
       Math.asin(Math.max(-1, Math.min(1, 2 * (t[0] * t[2] - t[3] * t[1])))) * this.TO_DEGREES,
-      Math.atan2(2 * (t[0] * t[3] + t[1] * t[2]), 1 - 2 * (t[2] * t[2] + t[3] * t[3])) * this.TO_DEGREES,
+      Math.atan2(2 * (t[0] * t[3] + t[1] * t[2]), 1 - 2 * (t[2] * t[2] + t[3] * t[3])) *
+        this.TO_DEGREES,
     ]
   }
 
@@ -276,7 +287,10 @@ export class LocationService {
       - finally convert the resulted quat angle back to euler angles for d3 to rotate
     */
 
-    const t = this.quatMultiply(this.euler2quat(o0), this.quaternion(this.lonlat2xyz(v0), this.lonlat2xyz(v1)))
+    const t = this.quatMultiply(
+      this.euler2quat(o0),
+      this.quaternion(this.lonlat2xyz(v0), this.lonlat2xyz(v1)),
+    )
     return this.quat2euler(t)
   }
 }

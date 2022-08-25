@@ -1,9 +1,9 @@
-import { AfterViewInit, Component } from '@angular/core'
+import { AfterViewInit, Component, OnDestroy } from '@angular/core'
 import { faMinus, faPlus } from '@fortawesome/free-solid-svg-icons'
 import * as d3 from 'd3'
 import { SubjectPosition } from 'd3'
-import { BehaviorSubject } from 'rxjs'
-import { combineLatestWith } from 'rxjs/operators'
+import { BehaviorSubject, Subject } from 'rxjs'
+import { combineLatestWith, takeUntil } from 'rxjs/operators'
 import { LocationService, TripInfo } from 'src/app/services/location.service'
 import * as topojson from 'topojson-client'
 
@@ -12,7 +12,7 @@ import * as topojson from 'topojson-client'
   templateUrl: './map.component.html',
   styleUrls: ['./map.component.scss'],
 })
-export class MapComponent implements AfterViewInit {
+export class MapComponent implements AfterViewInit, OnDestroy {
   faPlus = faPlus
   faMinus = faMinus
 
@@ -25,7 +25,9 @@ export class MapComponent implements AfterViewInit {
     for (let entry of entries) {
       if (entry.contentBoxSize) {
         // Firefox implements `contentBoxSize` as a single content rect, rather than an array
-        const contentBoxSize = Array.isArray(entry.contentBoxSize) ? entry.contentBoxSize[0] : entry.contentBoxSize
+        const contentBoxSize = Array.isArray(entry.contentBoxSize)
+          ? entry.contentBoxSize[0]
+          : entry.contentBoxSize
 
         this.width = contentBoxSize.inlineSize
         this.height = contentBoxSize.blockSize
@@ -50,6 +52,7 @@ export class MapComponent implements AfterViewInit {
   private locations: Array<TripInfo> = []
 
   private worldIsReady = new BehaviorSubject<boolean>(false)
+  private destroyed = new Subject<boolean>()
 
   private svg?: d3.Selection<Element, unknown, HTMLElement, any>
   private graticule = d3.geoGraticule10()
@@ -75,14 +78,17 @@ export class MapComponent implements AfterViewInit {
   ngAfterViewInit(): void {
     this.resizeObserver.observe(document.body)
 
-    this.service.world.subscribe((world) => {
+    this.service.world.pipe(takeUntil(this.destroyed)).subscribe((world) => {
       this.world = world
 
       this.setData()
     })
 
     this.worldIsReady
-      .pipe(combineLatestWith(this.service.countries, this.service.locations))
+      .pipe(
+        combineLatestWith(this.service.countries, this.service.locations),
+        takeUntil(this.destroyed),
+      )
       .subscribe(([worldIsReady, countries, locations]) => {
         if (worldIsReady && countries?.features.length && locations.length) {
           this.countries = countries
@@ -93,6 +99,11 @@ export class MapComponent implements AfterViewInit {
           this.drawProjection()
         }
       })
+  }
+
+  ngOnDestroy(): void {
+    this.destroyed.next(true)
+    this.destroyed.unsubscribe()
   }
 
   private setData() {
@@ -201,7 +212,8 @@ export class MapComponent implements AfterViewInit {
       .style('stroke', 'white')
       .style('fill', '#4abcc6')
       .on('mouseover', (event: MouseEvent) => {
-        this.locationPlaceholder!.innerText = (event.target as HTMLElement).getAttribute('name') || ''
+        this.locationPlaceholder!.innerText =
+          (event.target as HTMLElement).getAttribute('name') || ''
       })
       .on('mouseleave', (event: MouseEvent) => {
         this.locationPlaceholder!.innerText = ''
@@ -209,7 +221,10 @@ export class MapComponent implements AfterViewInit {
   }
 
   private drawProjection(): void {
-    this.svg!.selectAll('path').attr('d', this.path.projection(this.projection) as unknown as string)
+    this.svg!.selectAll('path').attr(
+      'd',
+      this.path.projection(this.projection) as unknown as string,
+    )
   }
 
   private onDragStart(event: unknown & SubjectPosition, d?: unknown) {
