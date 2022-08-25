@@ -22,3 +22,11 @@ svg {
   flex-direction: column;
   margin-left: auto;
 }
+
+#date-range-selector {
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  position: absolute;
+  width: 100%;
+}
