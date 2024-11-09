@@ -19,7 +19,8 @@ import { AnchorDirective } from './directives/anchor.directive'
 @NgModule({
   declarations: [AppComponent, AboutComponent, MapComponent, HeaderComponent, AnchorDirective],
   bootstrap: [AppComponent],
-  imports: [AppRoutingModule,
+  imports: [
+    AppRoutingModule,
     BrowserModule,
     BrowserAnimationsModule,
     FontAwesomeModule,
@@ -28,8 +29,8 @@ import { AnchorDirective } from './directives/anchor.directive'
     MatFormFieldModule,
     MatIconModule,
     MatNativeDateModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
   ],
-  providers: [provideHttpClient(withInterceptorsFromDi())]
+  providers: [provideHttpClient(withInterceptorsFromDi())],
 })
 export class AppModule {}
