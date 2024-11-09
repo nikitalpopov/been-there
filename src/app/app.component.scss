@@ -1,6 +1,6 @@
 @use '@angular/material' as mat;
 
-$custom-typography: mat.define-typography-config(
+$custom-typography: mat.m2-define-typography-config(
   $font-family: '"Helvetica Neue", Helvetica, Roboto, "Droid Sans", Arial, sans-serif;'
 );
 @include mat.all-component-typographies($custom-typography);
