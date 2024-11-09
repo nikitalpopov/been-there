@@ -1,4 +1,4 @@
-import { HttpClientModule } from '@angular/common/http'
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { NgModule } from '@angular/core'
 import { ReactiveFormsModule } from '@angular/forms'
 import { MatButtonModule } from '@angular/material/button'
@@ -18,20 +18,18 @@ import { AnchorDirective } from './directives/anchor.directive'
 
 @NgModule({
   declarations: [AppComponent, AboutComponent, MapComponent, HeaderComponent, AnchorDirective],
-  imports: [
-    AppRoutingModule,
+  bootstrap: [AppComponent],
+  imports: [AppRoutingModule,
     BrowserModule,
     BrowserAnimationsModule,
     FontAwesomeModule,
-    HttpClientModule,
     MatButtonModule,
     MatDatepickerModule,
     MatFormFieldModule,
     MatIconModule,
     MatNativeDateModule,
-    ReactiveFormsModule,
+    ReactiveFormsModule
   ],
-  providers: [],
-  bootstrap: [AppComponent],
+  providers: [provideHttpClient(withInterceptorsFromDi())]
 })
 export class AppModule {}
