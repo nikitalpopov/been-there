@@ -30,3 +30,36 @@ svg {
   position: absolute;
   width: 100%;
 }
+
+::ng-deep #map {
+  .graticule {
+    fill: none;
+    stroke: rgba(0, 0, 0, 0.17);
+  }
+
+  .land {
+    fill: rgba(0, 0, 0, 0.17);
+    stroke: none;
+  }
+
+  .border {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.7);
+  }
+
+  .country {
+    stroke: none;
+    fill: rgba(108, 229, 178, 0.74);
+  }
+
+  .location {
+    cursor: pointer;
+    paint: stroke;
+    stroke: white;
+    fill: rgb(74 188 198);
+
+    &:hover {
+      fill: rgb(217 210 88);
+    }
+  }
+}

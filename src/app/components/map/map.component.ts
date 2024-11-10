@@ -159,22 +159,16 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       .datum(this.graticule)
       .attr('class', 'graticule')
       .attr('d', this.path)
-      .style('fill', 'none')
-      .style('stroke', 'rgba(0, 0, 0, 0.17)')
 
     this.svg!.append('path')
       .datum(land)
       .attr('class', 'land')
       .attr('d', this.path)
-      .style('fill', 'rgba(0, 0, 0, 0.17)')
-      .style('stroke', 'none')
 
     this.svg!.append('path')
       .datum(borders)
       .attr('class', 'border')
       .attr('d', this.path)
-      .style('fill', 'none')
-      .style('stroke', 'rgba(255, 255, 255, 0.7)')
 
     this.worldIsReady.next(true)
   }
@@ -191,8 +185,6 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       .join('path')
       .attr('class', 'country')
       .attr('d', this.path.projection(this.projection) as unknown as string)
-      .style('stroke', 'none')
-      .style('fill', 'rgba(108, 229, 178, 0.74)')
       .on('mouseover', this.onMouseOver.bind(this))
       .on('mouseleave', this.onMouseLeave.bind(this))
   }
@@ -220,10 +212,6 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       .attr('name', (feature: any) => feature.properties.place)
       .attr('class', 'location')
       .attr('d', this.path.projection(this.projection) as unknown as string)
-      .style('cursor', 'pointer')
-      .style('paint-order', 'stroke')
-      .style('stroke', 'white')
-      .style('fill', '#4abcc6')
       .on('mouseover', (event: MouseEvent) => {
         this.locationPlaceholder!.innerText =
           (event.target as HTMLElement).getAttribute('name') || ''
