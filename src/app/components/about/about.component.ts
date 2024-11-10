@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { AnchorDirective } from 'src/app/directives/anchor.directive';
+import { Component } from '@angular/core'
+import { AnchorDirective } from 'src/app/directives/anchor.directive'
 
 @Component({
   selector: 'app-about',

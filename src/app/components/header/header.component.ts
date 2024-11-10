@@ -9,11 +9,7 @@ import { faGithub } from '@fortawesome/free-brands-svg-icons'
   templateUrl: './header.component.html',
   styleUrls: ['./header.component.scss'],
   standalone: true,
-  imports: [
-    RouterModule,
-    FaIconComponent,
-    MatButtonModule,
-  ],
+  imports: [RouterModule, FaIconComponent, MatButtonModule],
 })
 export class HeaderComponent {
   faGithub = faGithub

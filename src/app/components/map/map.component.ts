@@ -1,7 +1,13 @@
 import { AfterViewInit, Component, inject, OnDestroy } from '@angular/core'
 import { ReactiveFormsModule } from '@angular/forms'
 import { MatIconButton } from '@angular/material/button'
-import { MatDatepickerToggle, MatDateRangeInput, MatDateRangePicker, MatEndDate, MatStartDate } from '@angular/material/datepicker'
+import {
+  MatDatepickerToggle,
+  MatDateRangeInput,
+  MatDateRangePicker,
+  MatEndDate,
+  MatStartDate,
+} from '@angular/material/datepicker'
 import { MatFormField, MatLabel, MatSuffix } from '@angular/material/form-field'
 import { FaIconComponent } from '@fortawesome/angular-fontawesome'
 import { faMinus, faPlus } from '@fortawesome/free-solid-svg-icons'
@@ -29,7 +35,7 @@ import * as topojson from 'topojson-client'
     MatIconButton,
     MatLabel,
     MatSuffix,
-  ]
+  ],
 })
 export class MapComponent implements AfterViewInit, OnDestroy {
   private service = inject(LocationService)

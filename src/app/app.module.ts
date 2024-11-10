@@ -20,6 +20,9 @@ import { MapComponent } from './components/map/map.component'
     HeaderComponent,
     MapComponent,
   ],
-  providers: [provideHttpClient(withInterceptorsFromDi()), importProvidersFrom(MatNativeDateModule),],
+  providers: [
+    provideHttpClient(withInterceptorsFromDi()),
+    importProvidersFrom(MatNativeDateModule),
+  ],
 })
 export class AppModule {}
