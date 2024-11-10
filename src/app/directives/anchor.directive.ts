@@ -11,18 +11,18 @@ export class AnchorDirective {
 
   // eslint-disable-next-line accessor-pairs
   @Input() set anchor(value: string) {
-    if (this.element) {
-      this.element.id = value
-      this.element.classList.toggle('anchor', true)
-      this.link = window.location.origin + this.router.url.split('#')[0] + '#' + value
-    }
+    if (!this.element) return
+
+    this.element.id = value
+    this.element.classList.toggle('anchor', true)
+    this.link = window.location.origin + this.router.url.split('#')[0] + '#' + value
   }
 
   @HostListener('click') onClick() {
-    if (this.link) {
-      navigator.clipboard.writeText(this.link)
-      window.location.assign(this.link)
-    }
+    if (!this.link) return
+
+    navigator.clipboard.writeText(this.link)
+    window.location.assign(this.link)
   }
 
   element: HTMLElement | null = null
@@ -36,22 +36,22 @@ export class AnchorDirective {
   }
 
   private appendAnchorStyle(text: string = '#️⃣'): void {
-    if (document.head.querySelector('#anchor-style') === null) {
-      const anchorStyle = document.createElement('style')
-      anchorStyle.id = 'anchor-style'
-      anchorStyle.innerHTML = `
-        .anchor {
-          cursor: pointer;
-        }
+    if (document.head.querySelector('#anchor-style') !== null) return
 
-        .anchor:hover::after,
-        .anchor:focus::after {
-          content: '${text}';
-          font-size: medium;
-          margin-left: 8px;
-        }
-      `
-      document.head.appendChild(anchorStyle)
-    }
+    const anchorStyle = document.createElement('style')
+    anchorStyle.id = 'anchor-style'
+    anchorStyle.innerHTML = `
+      .anchor {
+        cursor: pointer;
+      }
+
+      .anchor:hover::after,
+      .anchor:focus::after {
+        content: '${text}';
+        font-size: medium;
+        margin-left: 8px;
+      }
+    `
+    document.head.appendChild(anchorStyle)
   }
 }

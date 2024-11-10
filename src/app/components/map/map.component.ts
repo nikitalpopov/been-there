@@ -14,7 +14,7 @@ import { faMinus, faPlus } from '@fortawesome/free-solid-svg-icons'
 import type { Selection, SubjectPosition } from 'd3'
 import * as d3 from 'd3'
 import { BehaviorSubject, Subject } from 'rxjs'
-import { combineLatestWith, takeUntil } from 'rxjs/operators'
+import { combineLatestWith, takeUntil, throttleTime } from 'rxjs/operators'
 import { LocationService, TripInfo } from 'src/app/services/location.service'
 import * as topojson from 'topojson-client'
 
@@ -48,37 +48,14 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private height = document.body.getBoundingClientRect().height
   private width = document.body.getBoundingClientRect().width
   private radius = 250
-  private resizeObserver = new ResizeObserver((entries) => {
-    for (const entry of entries) {
-      if (entry.contentBoxSize) {
-        // Firefox implements `contentBoxSize` as a single content rect, rather than an array
-        const contentBoxSize = Array.isArray(entry.contentBoxSize)
-          ? entry.contentBoxSize[0]
-          : entry.contentBoxSize
-
-        this.width = contentBoxSize.inlineSize
-        this.height = contentBoxSize.blockSize
-
-        this.svg = d3
-          .select<Element, unknown>('#map')
-          .attr('width', this.width)
-          .attr('height', this.height)
-          .attr('viewbox', `0 0 ${this.width} ${this.height}`)
-
-        this.projection.translate([this.width / 2, this.height / 2])
-        this.drawProjection()
-        this.svg!.select<SVGCircleElement>('circle')
-          .attr('cx', this.width / 2)
-          .attr('cy', this.height / 2)
-      }
-    }
-  })
+  private resizeObserver = new ResizeObserver(this.resizeCallback.bind(this))
 
   private world?: any
   private countries?: any
   private locations: Array<TripInfo> = []
 
   private worldIsReady = new BehaviorSubject<boolean>(false)
+  private projectionUpdated = new Subject<void>()
   private destroyed = new Subject<boolean>()
 
   private svg?: Selection<Element, unknown, HTMLElement, any>
@@ -111,20 +88,30 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       this.setData()
     })
 
+    this.projectionUpdated.pipe(
+      throttleTime(25, undefined, { leading: true, trailing: true }),
+      takeUntil(this.destroyed)
+    ).subscribe(() => {
+      this.drawProjection()
+    })
+
     this.worldIsReady
       .pipe(
         combineLatestWith(this.service.countries, this.service.locations),
         takeUntil(this.destroyed),
       )
       .subscribe(([worldIsReady, countries, locations]) => {
-        if (worldIsReady && countries?.features.length && locations.length) {
-          this.countries = countries
-          this.locations = locations
+        if (!worldIsReady) return
+        if (!countries?.features.length) return
+        if (!locations.length) return
 
-          this.drawVisitedCountries()
-          this.drawVisitedLocations()
-          this.drawProjection()
-        }
+        this.countries = countries
+        this.locations = locations
+
+        this.drawVisitedCountries()
+        this.drawVisitedLocations()
+
+        this.projectionUpdated.next()
       })
   }
 
@@ -149,65 +136,65 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     this.projection.rotate(this.o0)
 
     this.drawGlobe()
-    this.drawProjection()
+    this.projectionUpdated.next()
   }
 
   private drawGlobe(): void {
-    if (this.world) {
-      const land = topojson.feature(this.world, this.world.objects.land)
-      const borders = topojson.mesh(this.world, this.world.objects.countries, function (a, b) {
-        return a !== b
-      })
+    if (!this.world) return
 
-      this.svg!.append('circle')
-        .attr('cx', this.width / 2)
-        .attr('cy', this.height / 2)
-        .attr('r', this.radius)
-        .style('fill', 'none')
-        .style('stroke', 'black')
-        .style('stroke-width', 2)
+    const land = topojson.feature(this.world, this.world.objects.land)
+    const borders = topojson.mesh(this.world, this.world.objects.countries, function (a, b) {
+      return a !== b
+    })
 
-      this.svg!.append('path')
-        .datum(this.graticule)
-        .attr('class', 'graticule')
-        .attr('d', this.path)
-        .style('fill', 'none')
-        .style('stroke', 'rgba(0, 0, 0, 0.17)')
+    this.svg!.append('circle')
+      .attr('cx', this.width / 2)
+      .attr('cy', this.height / 2)
+      .attr('r', this.radius)
+      .style('fill', 'none')
+      .style('stroke', 'black')
+      .style('stroke-width', 2)
 
-      this.svg!.append('path')
-        .datum(land)
-        .attr('class', 'land')
-        .attr('d', this.path)
-        .style('fill', 'rgba(0, 0, 0, 0.17)')
-        .style('stroke', 'none')
+    this.svg!.append('path')
+      .datum(this.graticule)
+      .attr('class', 'graticule')
+      .attr('d', this.path)
+      .style('fill', 'none')
+      .style('stroke', 'rgba(0, 0, 0, 0.17)')
 
-      this.svg!.append('path')
-        .datum(borders)
-        .attr('class', 'border')
-        .attr('d', this.path)
-        .style('fill', 'none')
-        .style('stroke', 'rgba(255, 255, 255, 0.7)')
+    this.svg!.append('path')
+      .datum(land)
+      .attr('class', 'land')
+      .attr('d', this.path)
+      .style('fill', 'rgba(0, 0, 0, 0.17)')
+      .style('stroke', 'none')
 
-      this.worldIsReady.next(true)
-    }
+    this.svg!.append('path')
+      .datum(borders)
+      .attr('class', 'border')
+      .attr('d', this.path)
+      .style('fill', 'none')
+      .style('stroke', 'rgba(255, 255, 255, 0.7)')
+
+    this.worldIsReady.next(true)
   }
 
   private drawVisitedCountries(): void {
-    if (this.countries) {
-      this.svg!.selectAll('#countries').remove()
+    if (!this.countries) return
 
-      this.svg!.append('g')
-        .attr('id', 'countries')
-        .selectAll('path')
-        .data(this.countries.features)
-        .join('path')
-        .attr('class', 'country')
-        .attr('d', this.path.projection(this.projection) as unknown as string)
-        .style('stroke', 'none')
-        .style('fill', 'rgba(108, 229, 178, 0.74)')
-        .on('mouseover', this.onMouseOver.bind(this))
-        .on('mouseleave', this.onMouseLeave.bind(this))
-    }
+    this.svg!.selectAll('#countries').remove()
+
+    this.svg!.append('g')
+      .attr('id', 'countries')
+      .selectAll('path')
+      .data(this.countries.features)
+      .join('path')
+      .attr('class', 'country')
+      .attr('d', this.path.projection(this.projection) as unknown as string)
+      .style('stroke', 'none')
+      .style('fill', 'rgba(108, 229, 178, 0.74)')
+      .on('mouseover', this.onMouseOver.bind(this))
+      .on('mouseleave', this.onMouseLeave.bind(this))
   }
 
   private drawVisitedLocations(): void {
@@ -215,16 +202,15 @@ export class MapComponent implements AfterViewInit, OnDestroy {
 
     const locations = {
       type: 'FeatureCollection',
-      features: [] as unknown[],
+      features: this.locations.map((l) => {
+        const { coordinates, date, place } = l
+        return {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates },
+          properties: { date, place },
+        }
+      }),
     }
-    locations.features = this.locations.map((l) => {
-      const { coordinates, date, place } = l
-      return {
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates },
-        properties: { date, place },
-      }
-    })
 
     this.svg!.append('g')
       .attr('id', 'locations')
@@ -248,67 +234,103 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   }
 
   private drawProjection(): void {
-    this.svg!.selectAll('path').attr(
+    if (!this.svg) return
+
+    this.svg.selectAll('path').attr(
       'd',
       this.path.projection(this.projection) as unknown as string,
     )
+
+    this.svg.select<SVGCircleElement>('circle')
+      .attr('cx', this.width / 2)
+      .attr('cy', this.height / 2)
   }
 
   private onDragStart(event: unknown & SubjectPosition, d?: unknown) {
-    if (this.svg && this.projection && this.projection.invert && this.gpos0) {
-      this.gpos0 = this.projection.invert([event.x, event.y])
-      this.o0 = this.projection.rotate()
-      this.drawProjection()
-    }
+    if (!this.svg) return
+    if (!this.projection?.invert) return
+    if (!this.gpos0) return
+
+    this.gpos0 = this.projection.invert([event.x, event.y])
+    this.o0 = this.projection.rotate()
+    this.projectionUpdated.next()
   }
 
   private onDrag(event: unknown & SubjectPosition, d?: unknown) {
-    if (this.svg && this.projection && this.projection.invert && this.gpos0) {
-      const gpos1 = this.projection.invert([event.x, event.y])
+    if (!this.svg) return
+    if (!this.projection?.invert) return
+    if (!this.gpos0) return
 
-      this.o0 = this.projection.rotate()
+    const gpos1 = this.projection.invert([event.x, event.y])
 
-      try {
-        if (gpos1) {
-          const o1 = this.service.eulerAngles(this.gpos0, gpos1, this.o0)
-          o1[2] = 0 // to keep North pole
-          this.projection.rotate(o1)
-          this.drawProjection()
-        }
-      } catch (e: any) {
-        console.warn(e.message)
-      }
+    this.o0 = this.projection.rotate()
+
+    try {
+      if (!gpos1) return
+
+      const o1 = this.service.eulerAngles(this.gpos0, gpos1, this.o0)
+      o1[2] = 0 // to keep North pole
+      this.projection.rotate(o1)
+      this.projectionUpdated.next()
+    } catch (e: any) {
+      console.warn(e.message)
     }
   }
 
   private onDragEnd(event: unknown & SubjectPosition, d?: unknown) {}
 
   private onZoom(event: any) {
+    if (!this.svg) return
     const zoom = event.transform.translate(this.projection).k
     this.projection.scale(zoom * this.radius)
     this.drawProjection()
-    this.svg!.select<SVGCircleElement>('circle').attr('r', zoom * this.radius)
+    this.svg.select<SVGCircleElement>('circle').attr('r', zoom * this.radius)
   }
 
   private onZoomIn(event: unknown) {
-    this.zoom.scaleBy(this.svg!.transition().duration(750), 1.2)
+    if (!this.svg) return
+    this.zoom.scaleBy(this.svg.transition().duration(500), 1.2)
   }
 
   private onZoomOut(event: unknown) {
-    this.zoom.scaleBy(this.svg!.transition().duration(750), 0.8)
+    if (!this.svg) return
+    this.zoom.scaleBy(this.svg.transition().duration(500), 0.8)
   }
 
   private onMouseOver(event: MouseEvent) {
-    if (event.target) {
-      const target = event.target as SVGPathElement
-      target.style.fill = 'rgba(120, 200, 160, 1)'
-    }
+    if (!event.target) return
+
+    const target = event.target as SVGPathElement
+    target.style.fill = 'rgba(120, 200, 160, 1)'
   }
 
   private onMouseLeave(event: MouseEvent) {
-    if (event.target) {
-      const target = event.target as SVGPathElement
-      target.style.fill = 'rgba(108, 229, 178, 0.74)'
-    }
+    if (!event.target) return
+
+    const target = event.target as SVGPathElement
+    target.style.fill = 'rgba(108, 229, 178, 0.74)'
+  }
+
+  private resizeCallback(entries: ResizeObserverEntry[]) {
+    entries.forEach((entry) => {
+      if (!entry.contentBoxSize) return
+
+      // Firefox implements `contentBoxSize` as a single content rect, rather than an array
+      const contentBoxSize = Array.isArray(entry.contentBoxSize)
+        ? entry.contentBoxSize[0]
+        : entry.contentBoxSize
+
+      this.width = contentBoxSize.inlineSize
+      this.height = contentBoxSize.blockSize
+
+      this.svg = d3
+        .select<Element, unknown>('#map')
+        .attr('width', this.width)
+        .attr('height', this.height)
+        .attr('viewbox', `0 0 ${this.width} ${this.height}`)
+
+      this.projection.translate([this.width / 2, this.height / 2])
+      this.projectionUpdated.next()
+    })
   }
 }

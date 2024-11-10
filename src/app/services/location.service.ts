@@ -5,7 +5,7 @@ import { FormControl, FormGroup } from '@angular/forms'
 import * as d3 from 'd3'
 import type { FeatureCollection } from 'geojson'
 import { BehaviorSubject, Observable } from 'rxjs'
-import { combineLatestWith, map } from 'rxjs/operators'
+import { combineLatestWith, filter, map } from 'rxjs/operators'
 
 interface NomadListResponse {
   success: boolean
@@ -50,6 +50,12 @@ export class LocationService {
     end: new FormControl<Date>(this.maxDate),
   })
 
+
+  private dateChanges$ = this.range.controls.start.valueChanges.pipe(
+    combineLatestWith(this.range.controls.end.valueChanges),
+    filter(([start, end]) => !!start && !!end)
+  ) as Observable<[Date, Date]>
+
   private NOMAD_LIST_DATA?: NomadListResponse
   private COUNTRIES_GEOJSON?: FeatureCollection
   private TO_RADIANS = Math.PI / 180
@@ -60,22 +66,17 @@ export class LocationService {
       this.loadData()
     })
 
-    this.range.controls.start.valueChanges
-      .pipe(combineLatestWith(this.range.controls.end.valueChanges))
-      .subscribe(([startDate, endDate]) => {
-        if (startDate && endDate) {
-          endDate.setHours(23, 59, 59, 999)
-          this.sendInfo(startDate, endDate)
-        }
-      })
+    this.dateChanges$.subscribe(([startDate, endDate]: [Date, Date]) => {
+      endDate.setHours(23, 59, 59, 999)
+      this.sendInfo(startDate, endDate)
+    })
   }
 
   private getVisitedCountries(): Observable<void> {
     return this.http.get<NomadListResponse>('https://nomadlist.com/@nikitalpopov.json').pipe(
+      filter((response) => response.success),
       map((response) => {
-        if (response.success) {
-          this.NOMAD_LIST_DATA = response
-        }
+        this.NOMAD_LIST_DATA = response
       }),
     )
   }
@@ -103,13 +104,13 @@ export class LocationService {
       this._countries.next(countries)
     }
 
-    const locations = dateRangeTrips.map(
+    const locations: TripInfo[] = dateRangeTrips.map(
       (trip) =>
         ({
           coordinates: [trip.longitude, trip.latitude],
           date: new Date(trip.date_start),
           place: trip.place,
-        } as TripInfo),
+        }),
     )
 
     if (locations) {
