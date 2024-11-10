@@ -1,7 +1,9 @@
+/* eslint-disable camelcase */
 import { HttpClient } from '@angular/common/http'
-import { Injectable } from '@angular/core'
+import { inject, Injectable } from '@angular/core'
 import { FormControl, FormGroup } from '@angular/forms'
 import * as d3 from 'd3'
+import type { FeatureCollection } from 'geojson'
 import { BehaviorSubject, Observable } from 'rxjs'
 import { combineLatestWith, map } from 'rxjs/operators'
 
@@ -30,7 +32,9 @@ export interface TripInfo {
   providedIn: 'root',
 })
 export class LocationService {
-  private _countries = new BehaviorSubject<GeoJSON.FeatureCollection | undefined>(undefined)
+  private http = inject(HttpClient)
+
+  private _countries = new BehaviorSubject<FeatureCollection | undefined>(undefined)
   public countries = this._countries.asObservable()
 
   private _locations = new BehaviorSubject<Array<TripInfo>>([])
@@ -47,11 +51,11 @@ export class LocationService {
   })
 
   private NOMAD_LIST_DATA?: NomadListResponse
-  private COUNTRIES_GEOJSON?: GeoJSON.FeatureCollection
+  private COUNTRIES_GEOJSON?: FeatureCollection
   private TO_RADIANS = Math.PI / 180
   private TO_DEGREES = 180 / Math.PI
 
-  constructor(private http: HttpClient) {
+  constructor() {
     this.getVisitedCountries().subscribe(() => {
       this.loadData()
     })
@@ -78,7 +82,7 @@ export class LocationService {
 
   private sendInfo(startDate = this.minDate, endDate = this.maxDate): void {
     const nomadListData = this.NOMAD_LIST_DATA
-    const countries = { ...this.COUNTRIES_GEOJSON } as GeoJSON.FeatureCollection
+    const countries = { ...this.COUNTRIES_GEOJSON } as FeatureCollection
 
     const startDateEpoch = startDate.getTime() / 1000
     const endDateEpoch = endDate.getTime() / 1000
@@ -183,22 +187,20 @@ export class LocationService {
     v0: [number, number, number],
     v1: [number, number, number],
   ): 0 | [number, number, number, number] | undefined {
-    if (v0 && v1) {
-      const w = this.cross(v0, v1) // vector perpendicular to v0 & v1
-      const w_len = Math.sqrt(this.dot(w, w)) // length of w
+    if (!v0 || !v1) return
 
-      if (w_len == 0) return
+    const w = this.cross(v0, v1) // vector perpendicular to v0 & v1
+    const wLen = Math.sqrt(this.dot(w, w)) // length of w
 
-      const theta = 0.5 * Math.acos(Math.max(-1, Math.min(1, this.dot(v0, v1)))),
-        qi = (w[2] * Math.sin(theta)) / w_len,
-        qj = (-w[1] * Math.sin(theta)) / w_len,
-        qk = (w[0] * Math.sin(theta)) / w_len,
-        qr = Math.cos(theta)
+    if (wLen === 0) return
 
-      return theta && [qr, qi, qj, qk]
-    } else {
-      return
-    }
+    const theta = 0.5 * Math.acos(Math.max(-1, Math.min(1, this.dot(v0, v1))))
+    const qi = (w[2] * Math.sin(theta)) / wLen
+    const qj = (-w[1] * Math.sin(theta)) / wLen
+    const qk = (w[0] * Math.sin(theta)) / wLen
+    const qr = Math.cos(theta)
+
+    return theta && [qr, qi, qj, qk]
   }
 
   // Helper function:
@@ -207,19 +209,19 @@ export class LocationService {
   private euler2quat(e: [number, number, number]): [number, number, number, number] | undefined {
     if (!e) return
 
-    const roll = 0.5 * e[0] * this.TO_RADIANS,
-      pitch = 0.5 * e[1] * this.TO_RADIANS,
-      yaw = 0.5 * e[2] * this.TO_RADIANS,
-      sr = Math.sin(roll),
-      cr = Math.cos(roll),
-      sp = Math.sin(pitch),
-      cp = Math.cos(pitch),
-      sy = Math.sin(yaw),
-      cy = Math.cos(yaw),
-      qi = sr * cp * cy - cr * sp * sy,
-      qj = cr * sp * cy + sr * cp * sy,
-      qk = cr * cp * sy - sr * sp * cy,
-      qr = cr * cp * cy + sr * sp * sy
+    const roll = 0.5 * e[0] * this.TO_RADIANS
+    const pitch = 0.5 * e[1] * this.TO_RADIANS
+    const yaw = 0.5 * e[2] * this.TO_RADIANS
+    const sr = Math.sin(roll)
+    const cr = Math.cos(roll)
+    const sp = Math.sin(pitch)
+    const cp = Math.cos(pitch)
+    const sy = Math.sin(yaw)
+    const cy = Math.cos(yaw)
+    const qi = sr * cp * cy - cr * sp * sy
+    const qj = cr * sp * cy + sr * cp * sy
+    const qk = cr * cp * sy - sr * sp * cy
+    const qr = cr * cp * cy + sr * sp * sy
 
     return [qr, qi, qj, qk]
   }
@@ -235,14 +237,14 @@ export class LocationService {
   ): [number, number, number, number] | undefined {
     if (!q1 || !q2) return
 
-    const a = q1[0],
-      b = q1[1],
-      c = q1[2],
-      d = q1[3],
-      e = q2[0],
-      f = q2[1],
-      g = q2[2],
-      h = q2[3]
+    const a = q1[0]
+    const b = q1[1]
+    const c = q1[2]
+    const d = q1[3]
+    const e = q2[0]
+    const f = q2[1]
+    const g = q2[2]
+    const h = q2[3]
 
     return [
       a * e - b * f - c * g - d * h,

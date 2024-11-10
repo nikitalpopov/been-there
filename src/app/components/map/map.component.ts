@@ -1,7 +1,12 @@
-import { AfterViewInit, Component, OnDestroy } from '@angular/core'
+import { AfterViewInit, Component, inject, OnDestroy } from '@angular/core'
+import { ReactiveFormsModule } from '@angular/forms'
+import { MatIconButton } from '@angular/material/button'
+import { MatDatepickerToggle, MatDateRangeInput, MatDateRangePicker, MatEndDate, MatStartDate } from '@angular/material/datepicker'
+import { MatFormField, MatLabel, MatSuffix } from '@angular/material/form-field'
+import { FaIconComponent } from '@fortawesome/angular-fontawesome'
 import { faMinus, faPlus } from '@fortawesome/free-solid-svg-icons'
+import type { Selection, SubjectPosition } from 'd3'
 import * as d3 from 'd3'
-import { SubjectPosition } from 'd3'
 import { BehaviorSubject, Subject } from 'rxjs'
 import { combineLatestWith, takeUntil } from 'rxjs/operators'
 import { LocationService, TripInfo } from 'src/app/services/location.service'
@@ -11,8 +16,24 @@ import * as topojson from 'topojson-client'
   selector: 'app-map',
   templateUrl: './map.component.html',
   styleUrls: ['./map.component.scss'],
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    FaIconComponent,
+    MatDatepickerToggle,
+    MatDateRangeInput,
+    MatDateRangePicker,
+    MatStartDate,
+    MatEndDate,
+    MatFormField,
+    MatIconButton,
+    MatLabel,
+    MatSuffix,
+  ]
 })
 export class MapComponent implements AfterViewInit, OnDestroy {
+  private service = inject(LocationService)
+
   faPlus = faPlus
   faMinus = faMinus
 
@@ -22,7 +43,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private width = document.body.getBoundingClientRect().width
   private radius = 250
   private resizeObserver = new ResizeObserver((entries) => {
-    for (let entry of entries) {
+    for (const entry of entries) {
       if (entry.contentBoxSize) {
         // Firefox implements `contentBoxSize` as a single content rect, rather than an array
         const contentBoxSize = Array.isArray(entry.contentBoxSize)
@@ -54,26 +75,26 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private worldIsReady = new BehaviorSubject<boolean>(false)
   private destroyed = new Subject<boolean>()
 
-  private svg?: d3.Selection<Element, unknown, HTMLElement, any>
+  private svg?: Selection<Element, unknown, HTMLElement, any>
   private graticule = d3.geoGraticule10()
   private projection = d3
     .geoOrthographic()
     .scale(this.radius)
     .translate([this.width / 2, this.height / 2])
     .clipAngle(90)!
+
   private path = d3.geoPath(this.projection)
   private drag = d3
     .drag()
     .on('start', this.onDragStart.bind(this))
     .on('drag', this.onDrag.bind(this))
     .on('end', this.onDragEnd.bind(this)) as any
+
   private zoom = d3.zoom().scaleExtent([0.75, 10]).on('zoom', this.onZoom.bind(this))
   private gpos0: [number, number] | null = [0, 0]
   private o0: [number, number, number] = [-28.8394792245004, -35.40978980299912, 0]
 
   private locationPlaceholder = document.getElementById('location')
-
-  constructor(private service: LocationService) {}
 
   ngAfterViewInit(): void {
     this.resizeObserver.observe(document.body)

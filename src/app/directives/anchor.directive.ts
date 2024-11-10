@@ -1,10 +1,15 @@
-import { Directive, ElementRef, HostListener, Input } from '@angular/core'
+import { Directive, ElementRef, HostListener, inject, Input } from '@angular/core'
 import { Router } from '@angular/router'
 
 @Directive({
   selector: '[anchor]',
+  standalone: true,
 })
 export class AnchorDirective {
+  private el = inject(ElementRef)
+  private router = inject(Router)
+
+  // eslint-disable-next-line accessor-pairs
   @Input() set anchor(value: string) {
     if (this.element) {
       this.element.id = value
@@ -24,10 +29,10 @@ export class AnchorDirective {
 
   private link?: string
 
-  constructor(private el: ElementRef, private router: Router) {
+  constructor() {
     this.appendAnchorStyle()
 
-    this.element = el.nativeElement
+    this.element = this.el.nativeElement
   }
 
   private appendAnchorStyle(text: string = '#️⃣'): void {
