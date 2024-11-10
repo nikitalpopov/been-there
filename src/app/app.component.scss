@@ -4,7 +4,7 @@ $custom-typography: mat.m2-define-typography-config(
   $font-family: '"Helvetica Neue", Helvetica, Roboto, "Droid Sans", Arial, sans-serif;'
 );
 @include mat.all-component-typographies($custom-typography);
-@include mat.core();
+@include mat.core;
 
 :host {
   display: flex;
