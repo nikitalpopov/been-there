@@ -5,7 +5,6 @@ import { AnchorDirective } from 'src/app/directives/anchor.directive'
   selector: 'app-about',
   templateUrl: './about.component.html',
   styleUrls: ['./about.component.scss'],
-  standalone: true,
-  imports: [AnchorDirective],
+  imports: [AnchorDirective]
 })
 export class AboutComponent {}

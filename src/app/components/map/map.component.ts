@@ -22,7 +22,6 @@ import * as topojson from 'topojson-client'
   selector: 'app-map',
   templateUrl: './map.component.html',
   styleUrls: ['./map.component.scss'],
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     FaIconComponent,
@@ -35,7 +34,7 @@ import * as topojson from 'topojson-client'
     MatIconButton,
     MatLabel,
     MatSuffix,
-  ],
+  ]
 })
 export class MapComponent implements AfterViewInit, OnDestroy {
   private service = inject(LocationService)
