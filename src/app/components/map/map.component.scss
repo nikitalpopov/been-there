@@ -32,6 +32,12 @@ svg {
 }
 
 ::ng-deep #map {
+  .globe {
+    fill: none;
+    stroke: black;
+    stroke-width: 2;
+  }
+
   .graticule {
     fill: none;
     stroke: rgba(0, 0, 0, 0.17);
@@ -61,5 +67,9 @@ svg {
     &:hover {
       fill: rgb(217 210 88);
     }
+  }
+
+  .scrolling {
+    display: none;
   }
 }

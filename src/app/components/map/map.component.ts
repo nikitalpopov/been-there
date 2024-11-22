@@ -120,7 +120,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     this.destroyed.unsubscribe()
   }
 
-  private setData() {
+  private setData(): void {
     this.svg = d3
       .select<Element, unknown>('#map')
       .attr('width', this.width)
@@ -141,26 +141,25 @@ export class MapComponent implements AfterViewInit, OnDestroy {
 
   private drawGlobe(): void {
     if (!this.world) return
+    if (!this.svg) return
 
     const land = topojson.feature(this.world, this.world.objects.land)
     const borders = topojson.mesh(this.world, this.world.objects.countries, function (a, b) {
       return a !== b
     })
 
-    this.svg!.append('circle')
+    this.svg.append('circle')
       .attr('cx', this.width / 2)
       .attr('cy', this.height / 2)
       .attr('r', this.radius)
-      .style('fill', 'none')
-      .style('stroke', 'black')
-      .style('stroke-width', 2)
+      .attr('class', 'globe')
 
-    this.svg!.append('path')
+    this.svg.append('path')
       .datum(this.graticule)
       .attr('class', 'graticule')
       .attr('d', this.path)
 
-    this.svg!.append('path')
+    this.svg.append('path')
       .datum(land)
       .attr('class', 'land')
       .attr('d', this.path)
@@ -175,10 +174,11 @@ export class MapComponent implements AfterViewInit, OnDestroy {
 
   private drawVisitedCountries(): void {
     if (!this.countries) return
+    if (!this.svg) return
 
-    this.svg!.selectAll('#countries').remove()
+    this.svg.selectAll('#countries').remove()
 
-    this.svg!.append('g')
+    this.svg.append('g')
       .attr('id', 'countries')
       .selectAll('path')
       .data(this.countries.features)
@@ -190,7 +190,9 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   }
 
   private drawVisitedLocations(): void {
-    this.svg!.selectAll('#locations').remove()
+    if (!this.svg) return
+
+    this.svg.selectAll('#locations').remove()
 
     const locations = {
       type: 'FeatureCollection',
@@ -204,7 +206,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       }),
     }
 
-    this.svg!.append('g')
+    this.svg.append('g')
       .attr('id', 'locations')
       .selectAll('path')
       .data(locations.features)
@@ -234,17 +236,19 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       .attr('cy', this.height / 2)
   }
 
-  private onDragStart(event: unknown & SubjectPosition, d?: unknown) {
+  private onDragStart(event: unknown & SubjectPosition, d?: unknown): void {
     if (!this.svg) return
     if (!this.projection?.invert) return
     if (!this.gpos0) return
+
+    this.hidePaths()
 
     this.gpos0 = this.projection.invert([event.x, event.y])
     this.o0 = this.projection.rotate()
     this.projectionUpdated.next()
   }
 
-  private onDrag(event: unknown & SubjectPosition, d?: unknown) {
+  private onDrag(event: unknown & SubjectPosition, d?: unknown): void {
     if (!this.svg) return
     if (!this.projection?.invert) return
     if (!this.gpos0) return
@@ -265,41 +269,44 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private onDragEnd(event: unknown & SubjectPosition, d?: unknown) {}
+  private onDragEnd(event: unknown & SubjectPosition, d?: unknown): void {
+    this.showPaths()
+  }
 
-  private onZoom(event: any) {
+  private onZoom(event: any): void {
     if (!this.svg) return
+
     const zoom = event.transform.translate(this.projection).k
     this.projection.scale(zoom * this.radius)
     this.drawProjection()
     this.svg.select<SVGCircleElement>('circle').attr('r', zoom * this.radius)
   }
 
-  private onZoomIn(event: unknown) {
+  private onZoomIn(event: unknown): void {
     if (!this.svg) return
     this.zoom.scaleBy(this.svg.transition().duration(500), 1.2)
   }
 
-  private onZoomOut(event: unknown) {
+  private onZoomOut(event: unknown): void {
     if (!this.svg) return
     this.zoom.scaleBy(this.svg.transition().duration(500), 0.8)
   }
 
-  private onMouseOver(event: MouseEvent) {
+  private onMouseOver(event: MouseEvent): void {
     if (!event.target) return
 
     const target = event.target as SVGPathElement
     target.style.fill = 'rgba(120, 200, 160, 1)'
   }
 
-  private onMouseLeave(event: MouseEvent) {
+  private onMouseLeave(event: MouseEvent): void {
     if (!event.target) return
 
     const target = event.target as SVGPathElement
     target.style.fill = 'rgba(108, 229, 178, 0.74)'
   }
 
-  private resizeCallback(entries: ResizeObserverEntry[]) {
+  private resizeCallback(entries: ResizeObserverEntry[]): void {
     entries.forEach((entry) => {
       if (!entry.contentBoxSize) return
 
@@ -320,5 +327,15 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       this.projection.translate([this.width / 2, this.height / 2])
       this.projectionUpdated.next()
     })
+  }
+
+  private hidePaths(): void {
+    this.svg?.selectAll('.country').attr('class', 'country scrolling')
+    this.svg?.selectAll('.location').attr('class', 'location scrolling')
+  }
+
+  private showPaths(): void {
+    this.svg?.selectAll('.country.scrolling').attr('class', 'country')
+    this.svg?.selectAll('.location.scrolling').attr('class', 'location')
   }
 }
